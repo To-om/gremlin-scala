@@ -42,7 +42,7 @@ class ElementSpec extends TestBase {
       * TODO: `properties` should take `Key` as well
       */
     it("sets a property with multiple values") {
-      val v = graph.addV().property(Name, "marko").property(Name, "marko a. rodriguez").head
+      val v = graph.addVertex((Name.name -> "marko"), (Name.name -> "marko a. rodriguez"))
       graph.V(v).properties(Name.name).count.head shouldBe 2
 
       v.property(Cardinality.list, Name.name, "m. a. rodriguez")
