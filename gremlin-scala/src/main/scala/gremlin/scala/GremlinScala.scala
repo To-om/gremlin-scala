@@ -669,7 +669,13 @@ class GremlinScala[End](val traversal: GraphTraversal[_, End]) {
   // -------------------
 
   /** set the property to the given value */
-  def property[A](key: Key[A], value: A)(implicit ev: End <:< Element) =
+  def property[A](keyValue: KeyValue[A])(
+      implicit ev: End <:< Element): GremlinScala.Aux[End, Labels] =
+    property(keyValue.key, keyValue.value)
+
+  /** set the property to the given value */
+  def property[A](key: Key[A], value: A)(
+      implicit ev: End <:< Element): GremlinScala.Aux[End, Labels] =
     GremlinScala[End, Labels](traversal.property(key.name, value))
 
   /** set the property to the value determined by the given traversal */
@@ -855,10 +861,22 @@ class GremlinScala[End](val traversal: GraphTraversal[_, End]) {
     GremlinScala[Edge, Labels](traversal.bothE(labels: _*))
 
   /** may be used together with `from` / `to`, see TraversalSpec for examples */
-  def addE(label: String)(implicit ev: End <:< Vertex): GremlinScala.Aux[Edge, Labels] =
-    GremlinScala[Edge, Labels](traversal.addE(label))
-  def addE(label: StepLabel[Vertex])(implicit ev: End <:< Vertex): GremlinScala.Aux[Edge, Labels] =
-    GremlinScala[Edge, Labels](traversal.addE(label.name))
+  def addE(label: String, properties: KeyValue[_]*)(
+      implicit ev: End <:< Vertex): GremlinScala.Aux[Edge, Labels] = {
+    val newTrav = properties.foldLeft(traversal.addE(label)) { (trav, prop) =>
+      trav.property(prop.key.name, prop.value)
+    }
+    GremlinScala[Edge, Labels](newTrav)
+  }
+
+  def addE(label: StepLabel[Vertex], properties: KeyValue[_]*)(
+      implicit ev: End <:< Vertex): GremlinScala.Aux[Edge, Labels] =
+    addE(label.name, properties: _*)
+
+  /** modulator, use in conjunction with addE
+    * http://tinkerpop.apache.org/docs/current/reference/#from-step */
+  def from(vertex: Vertex): GremlinScala.Aux[End, Labels] =
+    GremlinScala[End, Labels](traversal.from(vertex))
 
   /** modulator, use in conjunction with simplePath(), cyclicPath(), path(), and addE()
     * http://tinkerpop.apache.org/docs/current/reference/#from-step */
@@ -874,6 +892,11 @@ class GremlinScala[End](val traversal: GraphTraversal[_, End]) {
       fromTraversal: GremlinScala[Vertex] => GremlinScala[Vertex]): GremlinScala.Aux[End, Labels] =
     GremlinScala[End, Labels](
       traversal.from(fromTraversal(start).traversal.asInstanceOf[GraphTraversal[End, Vertex]]))
+
+  /** modulator, use in conjunction with addE
+    * http://tinkerpop.apache.org/docs/current/reference/#to-step */
+  def to(vertex: Vertex): GremlinScala.Aux[End, Labels] =
+    GremlinScala[End, Labels](traversal.to(vertex))
 
   /** modulator, use in conjunction with simplePath(), cyclicPath(), path(), and addE()
     * http://tinkerpop.apache.org/docs/current/reference/#from-step */
